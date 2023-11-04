@@ -52,6 +52,7 @@ pub enum Message {
     User(User),
     Candle(Candle),
     SubscriptionResponse,
+    ErrorMessage(String),
 }
 
 #[derive(Serialize)]
@@ -78,6 +79,14 @@ impl WsManager {
                 let data = reader.next().await;
                 if let Err(err) = WsManager::parse_and_send_data(data, &subscriptions_copy).await {
                     error!("Error processing data received by WS manager reader: {err}");
+                    let subscriptions = subscriptions_copy.lock().await;
+                    for (_, subscriptions_datas) in subscriptions.iter() {
+                        for subscription_data in subscriptions_datas {
+                            let _ = subscription_data
+                                .sending_channel
+                                .send(Message::ErrorMessage("Critical Error".to_string()));
+                        }
+                    }
                 }
             }
         };
@@ -118,6 +127,9 @@ impl WsManager {
                 .map_err(|e| Error::JsonParse(e.to_string()))
             }
             Message::SubscriptionResponse => Ok(String::default()),
+            Message::ErrorMessage(err) => {
+                Ok(err.to_string())
+            },
         }
     }
 
