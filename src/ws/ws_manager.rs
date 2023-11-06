@@ -87,6 +87,7 @@ impl WsManager {
                                 .send(Message::ErrorMessage("Critical Error".to_string()));
                         }
                     }
+                    break;
                 }
             }
         };
